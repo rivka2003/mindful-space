@@ -1,0 +1,21 @@
+const mongoose = require('mongoose');
+
+const meditationSchema = new mongoose.Schema({
+    title: { type: String, required: true },
+    category: { type: String, required: true },
+    url: { type: String, required: true }, // קישור ליוטיוב/מקור אחר
+    duration: { type: Number }, // דקות
+    likesCount: { type: Number, default: 0 },
+    createdBy: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
+        required: true 
+    },
+    visibility: { 
+        type: String, 
+        enum: ['public', 'private'], 
+        default: 'public' 
+    }
+}, { timestamps: true });
+
+module.exports = mongoose.model('Meditation', meditationSchema);
