@@ -1,9 +1,18 @@
 const mongoose = require('mongoose');
+const {
+    CONTENT_CATEGORIES,
+    DEFAULT_CONTENT_CATEGORY
+} = require('../constants/contentCategories');
 
 const habitSchema = new mongoose.Schema({
     title: { type: String, required: true },
     description: { type: String },
-    category: { type: String, required: true },
+    category: {
+        type: String,
+        enum: CONTENT_CATEGORIES,
+        default: DEFAULT_CONTENT_CATEGORY,
+        required: true
+    },
     reminderType: { 
         type: String, 
         enum: ['email', 'sms', 'none'], 

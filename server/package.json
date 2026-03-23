@@ -2,10 +2,10 @@
   "name": "mindful-space",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-   "start": "node server/app.js",
-    "dev": "nodemon server/app.js",
+   "start": "node app.js",
+    "dev": "nodemon app.js",
     "test": "echo \"Error: no test specified\" && exit 1"  },
   "keywords": [],
   "author": "",

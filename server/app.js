@@ -1,36 +1,38 @@
-require('dotenv').config(); // טוען את המשתנים מקובץ ה-.env לזיכרון של השרת
-// 1. ייבוא הספרייה אקספרס
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
 const express = require('express');
-const connectDB = require('./config/db'); 
-const mantraRoutes = require('./routes/mantraRoutes'); // ייבוא הנתיבים
-const userRoutes = require('./routes/userRoutes'); // 1. ייבוא הנתיבים של המשתמשים
+const cors = require('cors');
+const connectDB = require('./config/db');
+const mantraRoutes = require('./routes/mantraRoutes');
+const userRoutes = require('./routes/userRoutes');
+const podcastRoutes = require('./routes/podcastRoutes');
+const meditationRoutes = require('./routes/meditationRoutes');
+const journalPromptRoutes = require('./routes/journalPromptRoutes');
+const habitRoutes = require('./routes/habitRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
-// 2. יצירת מופע של השרת
+
 const app = express();
-// 3. הגדרת הפורט (ה"שער") שדרכו השרת יקשיב לנו
 const PORT = 5000;
 
-// מפעילים את החיבור לבסיס הנתונים
 connectDB();
 
-// הגדרת "נקודת קצה" (Endpoint) למנטרות
-// כל מה שמתחיל ב-/api/mantras יעבור לקובץ ה-Routes שלנו
+app.use(cors());
+app.use(express.json());
+
 app.use('/api/mantras', mantraRoutes);
-
-app.use(express.json()); // השורה הזו קריטית כדי לקרוא את ה-Body מהפוסטמן
 app.use('/api/users', userRoutes);
+app.use('/api/podcasts', podcastRoutes);
+app.use('/api/meditations', meditationRoutes);
+app.use('/api/journal-prompts', journalPromptRoutes);
+app.use('/api/habits', habitRoutes);
 
-
-app.use(errorHandler);
-
-
-// 4. נתיב בדיקה בסיסי - כשנכנס לכתובת הראשית, נראה הודעה
 app.get('/', (req, res) => {
     res.send('Mindful Space Server is Running!');
 });
 
-// 5. הפעלת השרת
+app.use(errorHandler);
+
 app.listen(PORT, () => {
     console.log(`Server is moving on http://localhost:${PORT}`);
 });
-

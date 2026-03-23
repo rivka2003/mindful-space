@@ -21,6 +21,19 @@ const userSchema = new mongoose.Schema({
             required: true,
             refPath: 'likedContent.entityType' // מאפשר למונגוס לדעת לאיזה מודל להתייחס
         }
+    }],
+    reminderSubscriptions: [{
+        entityType: {
+            type: String,
+            required: true,
+            enum: ['Mantra', 'Habit']
+        },
+        entityId: {
+            type: mongoose.Schema.Types.ObjectId,
+            required: true,
+            refPath: 'reminderSubscriptions.entityType'
+        },
+        isActive: { type: Boolean, default: true }
     }]
 }, { timestamps: true });
 

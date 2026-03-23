@@ -1,90 +1,204 @@
 const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const httpError = require('../utils/httpError');
 
-// פונקציית עזר ליצירת JWT
-const generateToken = (id) => {
-    return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+const SALT_ROUNDS = 10;
+
+const hashPassword = async (password) => {
+    const salt = await bcrypt.genSalt(SALT_ROUNDS);
+    return bcrypt.hash(password, salt);
 };
 
-// הרשמת משתמש חדש
+const comparePasswords = async (plainPassword, hashedPassword) => {
+    return bcrypt.compare(plainPassword, hashedPassword);
+};
+
+const generateToken = (payload) => {
+    return jwt.sign(payload, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRES || '30d'
+    });
+};
+
+const buildAuthResponse = (user) => {
+    return {
+        token: generateToken({
+            id: user._id,
+            role: user.role,
+            email: user.email
+        }),
+        user: {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+        }
+    };
+};
+
 const registerUser = async (userData) => {
     const { name, email, password } = userData;
 
-    const userExists = await User.findOne({ email });
-    if (userExists) throw new Error('המשתמש כבר קיים במערכת');
+    if (!name || !email || !password) {
+        throw httpError(400, 'Name, email, and password are required');
+    }
 
-    // הצפנת הסיסמה לפני השמירה
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+        throw httpError(400, 'User already exists');
+    }
 
     const user = await User.create({
         name,
         email,
-        password: hashedPassword
+        password: await hashPassword(password)
     });
 
-    return {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        token: generateToken(user._id)
-    };
+    return buildAuthResponse(user);
 };
 
-// התחברות משתמש קיים
 const loginUser = async (email, password) => {
-    const user = await User.findOne({ email });
-
-    // בדיקה אם המשתמש קיים ואם הסיסמה תואמת למה שמוצפן ב-DB
-    if (user && (await bcrypt.compare(password, user.password))) {
-        return {
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            role: user.role,
-            token: generateToken(user._id)
-        };
-    } else {
-        throw new Error('אימייל או סיסמה שגויים');
+    if (!email || !password) {
+        throw httpError(400, 'Email and password are required');
     }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+        throw httpError(404, 'User not found');
+    }
+
+    const isMatch = await comparePasswords(password, user.password);
+    if (!isMatch) {
+        throw httpError(401, 'Invalid credentials');
+    }
+
+    return buildAuthResponse(user);
 };
 
-// שליפת כל המשתמשים (לאדמין)
 const getAllUsers = async () => {
-    return await User.find({}).select('-password'); // מחזיר הכל חוץ מהסיסמאות
+    return User.find({}).select('-password');
 };
 
-// עדכון פרופיל משתמש
-const updateUserProfile = async (userId, updateData) => {
-    // אם המשתמש מנסה לעדכן סיסמה, צריך להצפין אותה מחדש
-    if (updateData.password) {
-        const salt = await bcrypt.genSalt(10);
-        updateData.password = await bcrypt.hash(updateData.password, salt);
+const updateUserByAdmin = async (userId, updateData) => {
+    const safeUpdateData = sanitizeAdminUpdate(updateData);
+
+    if (Object.keys(safeUpdateData).length === 0) {
+        throw httpError(400, 'No valid user fields provided');
     }
 
     const updatedUser = await User.findByIdAndUpdate(
-        userId, 
-        { $set: updateData }, 
-        { new: true, runValidators: true } // new: true מחזיר את האובייקט המעודכן
+        userId,
+        { $set: safeUpdateData },
+        { new: true, runValidators: true }
     ).select('-password');
+
+    if (!updatedUser) {
+        throw httpError(404, 'User not found');
+    }
 
     return updatedUser;
 };
 
-// מחיקת משתמש
-const deleteUser = async (userId) => {
-    const user = await User.findById(userId);
-    if (!user) throw new Error('משתמש לא נמצא');
-    await user.deleteOne();
-    return { message: 'המשתמש נמחק בהצלחה' };
+const updateUserProfile = async (userId, updateData) => {
+    const safeUpdateData = sanitizeProfileUpdate(updateData);
+
+    if (Object.keys(safeUpdateData).length === 0) {
+        throw httpError(400, 'No valid profile fields provided');
+    }
+
+    if (safeUpdateData.password) {
+        safeUpdateData.password = await hashPassword(safeUpdateData.password);
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: safeUpdateData },
+        { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+        throw httpError(404, 'User not found');
+    }
+
+    return updatedUser;
 };
 
-module.exports = { 
-    registerUser, 
-    loginUser, 
-    getAllUsers, 
-    updateUserProfile, 
-    deleteUser 
+const changeUserPassword = async (userId, oldPassword, newPassword) => {
+    if (!oldPassword || !newPassword) {
+        throw httpError(400, 'Old password and new password are required');
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+        throw httpError(404, 'User not found');
+    }
+
+    const isMatch = await comparePasswords(oldPassword, user.password);
+    if (!isMatch) {
+        throw httpError(400, 'Old password incorrect');
+    }
+
+    user.password = await hashPassword(newPassword);
+    await user.save();
+
+    return { message: 'Password updated successfully' };
+};
+
+const deleteUser = async (userId) => {
+    const user = await User.findById(userId);
+    if (!user) {
+        throw httpError(404, 'User not found');
+    }
+
+    await user.deleteOne();
+    return { message: 'User deleted successfully' };
+};
+
+const getUserFavorites = async (userId) => {
+    const user = await User.findById(userId)
+        .select('likedContent')
+        .populate('likedContent.entityId');
+
+    if (!user) {
+        throw httpError(404, 'User not found');
+    }
+
+    return user.likedContent;
+};
+
+const sanitizeProfileUpdate = (updateData) => {
+    const safeUpdate = {};
+    const allowedFields = ['name', 'email', 'password'];
+
+    for (const field of allowedFields) {
+        if (updateData[field] !== undefined) {
+            safeUpdate[field] = updateData[field];
+        }
+    }
+
+    return safeUpdate;
+};
+
+const sanitizeAdminUpdate = (updateData) => {
+    const safeUpdate = {};
+    const allowedFields = ['name', 'email', 'role'];
+
+    for (const field of allowedFields) {
+        if (updateData[field] !== undefined) {
+            safeUpdate[field] = updateData[field];
+        }
+    }
+
+    return safeUpdate;
+};
+
+module.exports = {
+    registerUser,
+    loginUser,
+    getAllUsers,
+    updateUserByAdmin,
+    updateUserProfile,
+    changeUserPassword,
+    deleteUser,
+    getUserFavorites
 };
