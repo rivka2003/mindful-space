@@ -64,7 +64,7 @@ NODE_ENV=development
 5. Run development server: `npm run dev`
 6. Or run production-style server: `npm start`
 
-The backend listens on `http://localhost:5000`.
+The backend listens on `http://localhost:5000` by default, or on `process.env.PORT` in deployment environments such as Render.
 
 ### Frontend
 1. `cd client`
@@ -77,6 +77,40 @@ VITE_API_BASE_URL=http://localhost:5000
 ```
 
 5. Run: `npm run dev`
+
+In local development, Vite serves the frontend separately and proxies `/api` requests to the Express server.
+
+## Production Build And Single-Service Deploy
+
+This project can be deployed as a single Node service. In that setup:
+1. Vite builds the frontend into `client/dist`
+2. The Express server serves the built frontend files
+3. API routes continue to live under `/api/...`
+4. Non-API routes such as `/profile` or `/mantras` fall back to `client/dist/index.html` so React Router works on refresh
+
+### Render Web Service
+
+You can deploy this project to one Render Web Service instead of splitting frontend and backend.
+
+Use these settings:
+1. Runtime: `Node`
+2. Build Command: `npm --prefix server install && npm --prefix client install && npm --prefix client run build`
+3. Start Command: `npm --prefix server start`
+
+Set these environment variables in Render:
+
+```env
+MONGO_URI=your_mongodb_atlas_connection_string
+JWT_SECRET=your_strong_secret
+JWT_EXPIRES=7d
+NODE_ENV=production
+```
+
+Notes:
+1. Render injects `PORT` automatically, so you do not need to add it manually
+2. `client/vite.config.js` proxy settings are for local development only
+3. The server serves `client/dist` only after the frontend build exists
+4. If `client/dist` does not exist, the backend still runs and returns a simple root response at `/`
 
 ## Data Model
 
