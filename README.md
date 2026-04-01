@@ -79,6 +79,7 @@ VITE_API_BASE_URL=http://localhost:5000
 5. Run: `npm run dev`
 
 In local development, Vite serves the frontend separately and proxies `/api` requests to the Express server.
+If you want the frontend to call a separate local backend directly, you can keep `VITE_API_BASE_URL=http://localhost:5000`.
 
 ## Production Build And Single-Service Deploy
 
@@ -109,8 +110,9 @@ NODE_ENV=production
 Notes:
 1. Render injects `PORT` automatically, so you do not need to add it manually
 2. `client/vite.config.js` proxy settings are for local development only
-3. The server serves `client/dist` only after the frontend build exists
-4. If `client/dist` does not exist, the backend still runs and returns a simple root response at `/`
+3. In the deployed app, the frontend uses same-origin API calls such as `/api/mantras`, so `VITE_API_BASE_URL` is not required in Render
+4. The server serves `client/dist` only after the frontend build exists
+5. If `client/dist` does not exist, the backend still runs and returns a simple root response at `/`
 
 ## Data Model
 
