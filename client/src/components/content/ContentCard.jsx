@@ -1,4 +1,5 @@
 import { useState } from "react";
+import UiIcon from "../UiIcon";
 import useAuth from "../../hooks/useAuth";
 import useContentActions from "../../hooks/useContentActions";
 import { getContentCategoryLabel } from "../../features/content/categoryOptions";
@@ -6,6 +7,7 @@ import { getContentCategoryLabel } from "../../features/content/categoryOptions"
 function ContentCard({ item, queryKey, supportsReminder = false }) {
   const { isAuthenticated, user } = useAuth();
   const [feedback, setFeedback] = useState("");
+  const [pendingLiked, setPendingLiked] = useState(null);
   const { likeItem, unlikeItem, isLikePending, toggleReminder, isReminderPending } =
     useContentActions({
       entityType: item.entityType,
@@ -30,12 +32,15 @@ function ContentCard({ item, queryKey, supportsReminder = false }) {
   );
 
   async function handleLikeClick() {
+    if (isLikePending || pendingLiked !== null) return;
+
     if (!isAuthenticated) {
       setFeedback("This action is available only for signed-in users.");
       return;
     }
 
     setFeedback("");
+    setPendingLiked(!isLiked);
 
     try {
       if (isLiked) {
@@ -45,6 +50,8 @@ function ContentCard({ item, queryKey, supportsReminder = false }) {
       }
     } catch (error) {
       setFeedback(error.message || "Unable to update like.");
+    } finally {
+      setPendingLiked(null);
     }
   }
 
@@ -70,7 +77,6 @@ function ContentCard({ item, queryKey, supportsReminder = false }) {
     <article className="content-card">
       <div className="content-card__meta">
         <span className="pill">{getContentCategoryLabel(item.category)}</span>
-        <span className="likes-counter">{item.likesCount} likes</span>
       </div>
 
       <h3 className="content-card__title">{item.title}</h3>
@@ -84,20 +90,27 @@ function ContentCard({ item, queryKey, supportsReminder = false }) {
 
       <div className="content-card__actions">
         <button
-          className="ghost-button"
+          className={`like-button${(pendingLiked ?? isLiked) ? " like-button--active" : ""}`}
+          aria-label={`${(pendingLiked ?? isLiked) ? "Unlike" : "Like"} ${item.title}`}
+          aria-pressed={pendingLiked ?? isLiked}
+          aria-busy={isLikePending}
           disabled={isLikePending}
           onClick={handleLikeClick}
           type="button"
         >
-          {isLikePending ? "Saving..." : isLiked ? "Remove like" : "Like"}
+          <UiIcon name="heart" filled={pendingLiked ?? isLiked} />
+          <span>{item.likesCount ?? 0}</span>
         </button>
         {supportsReminder ? (
           <button
-            className="ghost-button"
+            className={`reminder-button${isReminderActive ? " reminder-button--active" : ""}`}
+            aria-pressed={isReminderActive}
+            aria-label={`${isReminderActive ? "Remove reminder for" : "Set reminder for"} ${item.title}`}
             disabled={isReminderPending}
             onClick={handleReminderClick}
             type="button"
           >
+            <UiIcon name={isReminderActive ? "check" : "bell"} />
             {isReminderPending
               ? "Saving..."
               : isReminderActive
@@ -108,7 +121,7 @@ function ContentCard({ item, queryKey, supportsReminder = false }) {
       </div>
 
       {!isAuthenticated || feedback ? (
-        <p className="hint-text">
+        <p className="hint-text" role="status">
           {feedback ||
             `Likes${supportsReminder ? " and reminders" : ""} are available only for signed-in users.`}
         </p>

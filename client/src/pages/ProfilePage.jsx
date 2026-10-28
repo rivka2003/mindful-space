@@ -18,7 +18,7 @@ function ProfilePage() {
     <main className="page-container">
       <section className="content-section">
         <p className="eyebrow">Profile</p>
-        <h1>Your personal area</h1>
+        <h1>Your personal space</h1>
         {!isAuthenticated ? (
           <p className="section-copy">
             Sign in to view liked content and active reminder subscriptions.

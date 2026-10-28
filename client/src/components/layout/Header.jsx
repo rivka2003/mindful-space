@@ -1,5 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
+import UiIcon from "../UiIcon";
 
 const contentLinks = [
   { to: "/mantras", label: "Mantras" },
@@ -16,6 +17,7 @@ function Header() {
     <header className="site-header">
       <div className="site-header__inner">
         <Link className="site-brand" to="/">
+          <span className="brand-mark"><UiIcon name="leaf" /></span>
           Mindful Space
         </Link>
 
@@ -61,7 +63,7 @@ function Header() {
             </>
           ) : (
             <Link className="primary-button" to="/auth">
-              Login / Register
+              Get started <UiIcon name="arrow" />
             </Link>
           )}
         </div>

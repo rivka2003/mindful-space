@@ -1,20 +1,15 @@
-import { Chip, Stack } from "@mui/material";
-
 function CategoryFilter({ categories, selectedCategory, onChange }) {
   return (
     <div className="filter-row" aria-label="Category filters" role="group">
-      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
         {categories.map((category) => (
-          <Chip
+          <button
             key={category.value}
-            clickable
-            color={selectedCategory === category.value ? "primary" : "default"}
-            label={category.label}
+            type="button"
+            className={`filter-button${selectedCategory === category.value ? " filter-button--active" : ""}`}
+            aria-pressed={selectedCategory === category.value}
             onClick={() => onChange(category.value)}
-            variant={selectedCategory === category.value ? "filled" : "outlined"}
-          />
+          >{category.label}</button>
         ))}
-      </Stack>
     </div>
   );
 }

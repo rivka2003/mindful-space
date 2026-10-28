@@ -33,7 +33,7 @@ function ContentCollection({
   return (
     <section className="content-section">
       <div className="content-section__header">
-        <p className="eyebrow">{title}</p>
+        <p className="eyebrow">Make room for yourself</p>
         <h1>{title}</h1>
         <p className="section-copy">{intro}</p>
       </div>
